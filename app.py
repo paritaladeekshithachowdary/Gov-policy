@@ -9,48 +9,71 @@ st.markdown("""
     <style>
     .main { background-color: #f5f7f9; }
     .stButton>button { width: 100%; border-radius: 20px; height: 3em; background-color: #007bff; color: white; }
-    .policy-card { padding: 20px; border-radius: 10px; border-left: 5px solid #007bff; background-color: white; box-shadow: 2px 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .policy-card { 
+        padding: 20px; 
+        border-radius: 10px; 
+        border-left: 5px solid #007bff; 
+        background-color: white; 
+        box-shadow: 2px 2px 10px rgba(0,0,0,0.1); 
+        margin-bottom: 20px; 
+    }
+    .apply-link {
+        display: inline-block;
+        margin-top: 10px;
+        padding: 8px 15px;
+        background-color: #28a745;
+        color: white !important;
+        text-decoration: none;
+        border-radius: 5px;
+        font-weight: bold;
+    }
+    .apply-link:hover { background-color: #218838; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- POLICY KNOWLEDGE BASE ---
-# In a real app, this could be a CSV or a Database
+# --- POLICY KNOWLEDGE BASE (Updated with Official Links) ---
 POLICIES = [
     {
         "name": "Pragati Scholarship Scheme",
         "min_age": 17, "max_age": 25, "gender": "Female", "max_income": 800000, 
-        "category": "Student", "desc": "₹50,000 per annum for girls pursuing technical degrees."
+        "category": "Student", "desc": "₹50,000 per annum for girls pursuing technical degrees.",
+        "url": "https://www.myscheme.gov.in/schemes/psgs-deg"
     },
     {
         "name": "Post-Matric Scholarship for Minorities",
         "min_age": 15, "max_age": 30, "gender": "All", "max_income": 200000, 
-        "category": "Student", "desc": "Financial assistance for higher education for economically weaker sections."
+        "category": "Student", "desc": "Financial assistance for higher education for meritorious minority students.",
+        "url": "https://scholarships.gov.in/"
     },
     {
-        "name": "PM Ujjwala Yojana",
+        "name": "PM Ujjwala Yojana (PMUY)",
         "min_age": 18, "max_age": 100, "gender": "Female", "max_income": 150000, 
-        "category": "General Public", "desc": "Provides free LPG connections to women from BPL households."
+        "category": "General Public", "desc": "Free LPG connections to women from BPL households.",
+        "url": "https://www.pmuy.gov.in/"
     },
     {
         "name": "Mudra Loan (Shishu)",
         "min_age": 18, "max_age": 65, "gender": "All", "max_income": 9999999, 
-        "category": "Business Owner", "desc": "Loans up to ₹50,000 for starting a small business without collateral."
+        "category": "Business Owner", "desc": "Collateral-free loans up to ₹50,000 for small businesses.",
+        "url": "https://www.jansamarth.in/business-loan-pradhan-mantri-mudra-yojana-scheme"
     },
     {
-        "name": "Atal Pension Yojana",
+        "name": "Atal Pension Yojana (APY)",
         "min_age": 18, "max_age": 40, "gender": "All", "max_income": 9999999, 
-        "category": "General Public", "desc": "Guaranteed monthly pension after age 60 for unorganized sector workers."
+        "category": "General Public", "desc": "Guaranteed monthly pension after age 60.",
+        "url": "https://www.npscra.nsdl.co.in/scheme-details.php"
     },
     {
         "name": "Lakhpati Didi Scheme",
         "min_age": 18, "max_age": 60, "gender": "Female", "max_income": 300000, 
-        "category": "Farmer", "desc": "Empowers women in Self Help Groups to earn at least ₹1 Lakh per year through skill training."
+        "category": "Farmer", "desc": "Skill training to help SHG women earn at least ₹1 Lakh annually.",
+        "url": "https://lakhpatididi.gov.in/"
     }
 ]
 
 # --- APP HEADER ---
 st.title("🏛️ Government Policy AI Agent")
-st.write("Enter your details below, and my AI logic will find the best government schemes for you.")
+st.write("Enter your details below to find official government schemes tailored for you.")
 
 # --- SIDEBAR: USER INFO ---
 with st.sidebar:
@@ -67,23 +90,19 @@ with st.sidebar:
 def get_recommendations(age, gender, income, user_type):
     matches = []
     for p in POLICIES:
-        # Checking age eligibility
-        if not (p["min_age"] <= age <= p["max_age"]):
-            continue
-        # Checking gender eligibility
-        if p["gender"] != "All" and p["gender"] != gender:
-            continue
-        # Checking income eligibility
-        if income > p["max_income"]:
-            continue
-        # Checking category (prioritize student if they are a student)
-        score = 0
-        if p["category"] == user_type:
-            score += 2
+        if not (p["min_age"] <= age <= p["max_age"]): continue
+        if p["gender"] != "All" and p["gender"] != gender: continue
+        if income > p["max_income"]: continue
         
-        matches.append({"name": p["name"], "desc": p["desc"], "score": score})
-    
-    # Sort by relevance
+        score = 0
+        if p["category"] == user_type: score += 2
+        
+        matches.append({
+            "name": p["name"], 
+            "desc": p["desc"], 
+            "url": p["url"], 
+            "score": score
+        })
     return sorted(matches, key=lambda x: x['score'], reverse=True)
 
 # --- MAIN DISPLAY ---
@@ -100,14 +119,12 @@ if find_button:
                 <div class="policy-card">
                     <h3>✅ {res['name']}</h3>
                     <p>{res['desc']}</p>
-                    <small>Relevance Score: {"High" if res['score'] > 0 else "Medium"}</small>
+                    <a href="{res['url']}" target="_blank" class="apply-link">View Official Details & Apply ↗️</a>
                 </div>
             """, unsafe_allow_html=True)
 else:
-    # Welcome Screen / Instructions
     st.info("Please fill in your details on the left sidebar and click 'Find Best Policies'.")
     st.image("https://www.myscheme.gov.in/_next/image?url=%2Fimages%2Fhome%2Fhero-banner.png&w=1920&q=75", caption="Empowering Citizens through Technology")
 
-# --- FOOTER ---
 st.divider()
-st.caption("Note: This AI agent uses a curated 2026 database. Always check the official 'myScheme' portal for final verification.")
+st.caption("Note: This AI agent uses a curated 2026 database. All links lead to official .gov.in or authorized portal sites.")
