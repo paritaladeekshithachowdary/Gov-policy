@@ -1,58 +1,113 @@
 import streamlit as st
-import requests
+import pandas as pd
 
-# --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="AI Policy Hub", page_icon="🏛️", layout="centered")
+# --- PAGE CONFIG ---
+st.set_page_config(page_title="GovPolicy AI Agent", page_icon="🏛️", layout="wide")
 
-st.title("🏛️ AI Policy Hub Agent")
-st.write("Ask any questions about policies, and the AI agent will assist you.")
+# --- CUSTOM CSS FOR BETTER UI ---
+st.markdown("""
+    <style>
+    .main { background-color: #f5f7f9; }
+    .stButton>button { width: 100%; border-radius: 20px; height: 3em; background-color: #007bff; color: white; }
+    .policy-card { padding: 20px; border-radius: 10px; border-left: 5px solid #007bff; background-color: white; box-shadow: 2px 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# URL of your Render backend
-API_URL = "https://gov-ai-backend-frt0.onrender.com/ask"
+# --- POLICY KNOWLEDGE BASE ---
+# In a real app, this could be a CSV or a Database
+POLICIES = [
+    {
+        "name": "Pragati Scholarship Scheme",
+        "min_age": 17, "max_age": 25, "gender": "Female", "max_income": 800000, 
+        "category": "Student", "desc": "₹50,000 per annum for girls pursuing technical degrees."
+    },
+    {
+        "name": "Post-Matric Scholarship for Minorities",
+        "min_age": 15, "max_age": 30, "gender": "All", "max_income": 200000, 
+        "category": "Student", "desc": "Financial assistance for higher education for economically weaker sections."
+    },
+    {
+        "name": "PM Ujjwala Yojana",
+        "min_age": 18, "max_age": 100, "gender": "Female", "max_income": 150000, 
+        "category": "General Public", "desc": "Provides free LPG connections to women from BPL households."
+    },
+    {
+        "name": "Mudra Loan (Shishu)",
+        "min_age": 18, "max_age": 65, "gender": "All", "max_income": 9999999, 
+        "category": "Business Owner", "desc": "Loans up to ₹50,000 for starting a small business without collateral."
+    },
+    {
+        "name": "Atal Pension Yojana",
+        "min_age": 18, "max_age": 40, "gender": "All", "max_income": 9999999, 
+        "category": "General Public", "desc": "Guaranteed monthly pension after age 60 for unorganized sector workers."
+    },
+    {
+        "name": "Lakhpati Didi Scheme",
+        "min_age": 18, "max_age": 60, "gender": "Female", "max_income": 300000, 
+        "category": "Farmer", "desc": "Empowers women in Self Help Groups to earn at least ₹1 Lakh per year through skill training."
+    }
+]
 
-# --- SESSION STATE INITIALIZATION ---
-# This keeps track of the chat history so it doesn't disappear when the page reloads
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# --- APP HEADER ---
+st.title("🏛️ Government Policy AI Agent")
+st.write("Enter your details below, and my AI logic will find the best government schemes for you.")
 
-# Display previous chat messages
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-# --- CHAT INPUT & API CALL ---
-# st.chat_input creates the text box at the bottom of the screen
-if prompt := st.chat_input("Ask a policy question..."):
+# --- SIDEBAR: USER INFO ---
+with st.sidebar:
+    st.header("👤 Your Profile")
+    age = st.number_input("Age", min_value=1, max_value=100, value=20)
+    gender = st.selectbox("Gender", ["Female", "Male", "Other"])
+    income = st.number_input("Annual Income (in ₹)", min_value=0, value=0, step=10000)
+    location = st.selectbox("Location Type", ["Urban", "Rural"])
+    user_type = st.selectbox("Professional Status", ["Student", "Farmer", "IT Professional", "Business Owner", "General Public"])
     
-    # 1. Display user's prompt in the UI
-    with st.chat_message("user"):
-        st.markdown(prompt)
-    
-    # 2. Add user's prompt to session state
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    find_button = st.button("Find Best Policies")
 
-    # 3. Call your Render Backend and display the AI's response
-    with st.chat_message("assistant"):
-        with st.spinner("The AI is thinking..."):
-            try:
-                # MAKE SURE: "query" matches what your backend expects (could be "message", "prompt", etc.)
-                payload = {"query": prompt} 
-                response = requests.post(API_URL, json=payload, timeout=30)
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    # MAKE SURE: "answer" matches what your backend returns (could be "response", "reply", etc.)
-                    ai_response = data.get("answer", data.get("response", str(data)))
-                else:
-                    ai_response = f"⚠️ Server returned an error: {response.status_code}. Is the Render server awake?"
-            
-            except requests.exceptions.Timeout:
-                ai_response = "⚠️ Request timed out. The Render server might be waking up from sleep mode (takes ~50 seconds)."
-            except Exception as e:
-                ai_response = f"⚠️ Connection error: {e}"
-            
-            # Display the AI response
-            st.markdown(ai_response)
-            
-    # 4. Add the AI's response to session state history
-    st.session_state.messages.append({"role": "assistant", "content": ai_response})
+# --- AI AGENT LOGIC ---
+def get_recommendations(age, gender, income, user_type):
+    matches = []
+    for p in POLICIES:
+        # Checking age eligibility
+        if not (p["min_age"] <= age <= p["max_age"]):
+            continue
+        # Checking gender eligibility
+        if p["gender"] != "All" and p["gender"] != gender:
+            continue
+        # Checking income eligibility
+        if income > p["max_income"]:
+            continue
+        # Checking category (prioritize student if they are a student)
+        score = 0
+        if p["category"] == user_type:
+            score += 2
+        
+        matches.append({"name": p["name"], "desc": p["desc"], "score": score})
+    
+    # Sort by relevance
+    return sorted(matches, key=lambda x: x['score'], reverse=True)
+
+# --- MAIN DISPLAY ---
+if find_button:
+    st.subheader(f"Results for {age}yo {gender} {user_type}")
+    results = get_recommendations(age, gender, income, user_type)
+    
+    if not results:
+        st.warning("No specific matches found for your criteria. Try adjusting your income or status.")
+    else:
+        st.success(f"Found {len(results)} matching policies!")
+        for res in results:
+            st.markdown(f"""
+                <div class="policy-card">
+                    <h3>✅ {res['name']}</h3>
+                    <p>{res['desc']}</p>
+                    <small>Relevance Score: {"High" if res['score'] > 0 else "Medium"}</small>
+                </div>
+            """, unsafe_allow_html=True)
+else:
+    # Welcome Screen / Instructions
+    st.info("Please fill in your details on the left sidebar and click 'Find Best Policies'.")
+    st.image("https://www.myscheme.gov.in/_next/image?url=%2Fimages%2Fhome%2Fhero-banner.png&w=1920&q=75", caption="Empowering Citizens through Technology")
+
+# --- FOOTER ---
+st.divider()
+st.caption("Note: This AI agent uses a curated 2026 database. Always check the official 'myScheme' portal for final verification.")
