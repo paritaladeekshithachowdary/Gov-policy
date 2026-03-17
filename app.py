@@ -1,130 +1,131 @@
 import streamlit as st
-import pandas as pd
 
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="GovPolicy AI Agent", page_icon="🏛️", layout="wide")
 
-# --- CUSTOM CSS FOR BETTER UI ---
+# --- CUSTOM CSS ---
 st.markdown("""
     <style>
-    .main { background-color: #f5f7f9; }
-    .stButton>button { width: 100%; border-radius: 20px; height: 3em; background-color: #007bff; color: white; }
+    .main { background-color: #f8f9fa; }
     .policy-card { 
-        padding: 20px; 
-        border-radius: 10px; 
-        border-left: 5px solid #007bff; 
+        padding: 25px; 
+        border-radius: 12px; 
         background-color: white; 
-        box-shadow: 2px 2px 10px rgba(0,0,0,0.1); 
+        border-left: 8px solid #007bff;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
         margin-bottom: 20px; 
     }
-    .apply-link {
+    .tag {
+        padding: 4px 12px;
+        border-radius: 50px;
+        font-size: 12px;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin-right: 5px;
+    }
+    .tag-student { background-color: #e3f2fd; color: #1976d2; }
+    .tag-pension { background-color: #fff3e0; color: #e65100; }
+    .apply-btn {
         display: inline-block;
-        margin-top: 10px;
-        padding: 8px 15px;
+        margin-top: 15px;
+        padding: 10px 20px;
         background-color: #28a745;
         color: white !important;
         text-decoration: none;
         border-radius: 5px;
         font-weight: bold;
     }
-    .apply-link:hover { background-color: #218838; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- POLICY KNOWLEDGE BASE (Updated with Official Links) ---
+# --- EXPANDED POLICY DATABASE ---
 POLICIES = [
     {
-        "name": "Pragati Scholarship Scheme",
-        "min_age": 17, "max_age": 25, "gender": "Female", "max_income": 800000, 
-        "category": "Student", "desc": "₹50,000 per annum for girls pursuing technical degrees.",
+        "name": "Pragati Scholarship (AICTE)",
+        "min_age": 16, "max_age": 25, "gender": "Female", "max_income": 800000, 
+        "category": "Student", "type": "Scholarship",
+        "desc": "₹50,000 per year for girls in technical degree/diploma courses.",
         "url": "https://www.myscheme.gov.in/schemes/psgs-deg"
+    },
+    {
+        "name": "Central Sector Scholarship (CSSS)",
+        "min_age": 18, "max_age": 25, "gender": "All", "max_income": 450000, 
+        "category": "Student", "type": "Scholarship",
+        "desc": "For students above 80th percentile in Class 12. Provides up to ₹20,000 annually.",
+        "url": "https://scholarships.gov.in/"
     },
     {
         "name": "Post-Matric Scholarship for Minorities",
         "min_age": 15, "max_age": 30, "gender": "All", "max_income": 200000, 
-        "category": "Student", "desc": "Financial assistance for higher education for meritorious minority students.",
+        "category": "Student", "type": "Scholarship",
+        "desc": "Financial support for higher education (Class 11 to PhD).",
         "url": "https://scholarships.gov.in/"
     },
     {
-        "name": "PM Ujjwala Yojana (PMUY)",
-        "min_age": 18, "max_age": 100, "gender": "Female", "max_income": 150000, 
-        "category": "General Public", "desc": "Free LPG connections to women from BPL households.",
-        "url": "https://www.pmuy.gov.in/"
-    },
-    {
-        "name": "Mudra Loan (Shishu)",
-        "min_age": 18, "max_age": 65, "gender": "All", "max_income": 9999999, 
-        "category": "Business Owner", "desc": "Collateral-free loans up to ₹50,000 for small businesses.",
-        "url": "https://www.jansamarth.in/business-loan-pradhan-mantri-mudra-yojana-scheme"
+        "name": "Lakhpati Didi Scheme",
+        "min_age": 18, "max_age": 50, "gender": "Female", "max_income": 300000, 
+        "category": "General Public", "type": "Skill Training",
+        "desc": "Financial literacy and skill training for women in SHGs to earn ₹1 Lakh/year.",
+        "url": "https://lakhpatididi.gov.in/"
     },
     {
         "name": "Atal Pension Yojana (APY)",
         "min_age": 18, "max_age": 40, "gender": "All", "max_income": 9999999, 
-        "category": "General Public", "desc": "Guaranteed monthly pension after age 60.",
+        "category": "General Public", "type": "Pension",
+        "desc": "Monthly pension for unorganized workers. Requires monthly contributions.",
         "url": "https://www.npscra.nsdl.co.in/scheme-details.php"
-    },
-    {
-        "name": "Lakhpati Didi Scheme",
-        "min_age": 18, "max_age": 60, "gender": "Female", "max_income": 300000, 
-        "category": "Farmer", "desc": "Skill training to help SHG women earn at least ₹1 Lakh annually.",
-        "url": "https://lakhpatididi.gov.in/"
     }
 ]
 
-# --- APP HEADER ---
-st.title("🏛️ Government Policy AI Agent")
-st.write("Enter your details below to find official government schemes tailored for you.")
+# --- UI ---
+st.title("🏛️ Verified Indian Gov Policy Agent")
 
-# --- SIDEBAR: USER INFO ---
 with st.sidebar:
-    st.header("👤 Your Profile")
-    age = st.number_input("Age", min_value=1, max_value=100, value=20)
+    st.header("👤 Your Details")
+    age = st.number_input("Age", 1, 100, 20)
     gender = st.selectbox("Gender", ["Female", "Male", "Other"])
-    income = st.number_input("Annual Income (in ₹)", min_value=0, value=0, step=10000)
-    location = st.selectbox("Location Type", ["Urban", "Rural"])
-    user_type = st.selectbox("Professional Status", ["Student", "Farmer", "IT Professional", "Business Owner", "General Public"])
-    
-    find_button = st.button("Find Best Policies")
+    income = st.number_input("Annual Income (₹)", 0, 10000000, 0)
+    user_status = st.selectbox("Current Status", ["Student", "Working", "Unemployed", "Business Owner"])
+    find_btn = st.button("Analyze Policies")
 
-# --- AI AGENT LOGIC ---
-def get_recommendations(age, gender, income, user_type):
-    matches = []
+# --- IMPROVED AI MATCHING LOGIC ---
+def get_matches(u_age, u_gender, u_income, u_status):
+    results = []
     for p in POLICIES:
-        if not (p["min_age"] <= age <= p["max_age"]): continue
-        if p["gender"] != "All" and p["gender"] != gender: continue
-        if income > p["max_income"]: continue
+        # 1. Eligibility Check
+        if not (p["min_age"] <= u_age <= p["max_age"]): continue
+        if p["gender"] != "All" and p["gender"] != u_gender: continue
+        if u_income > p["max_income"]: continue
         
-        score = 0
-        if p["category"] == user_type: score += 2
+        # 2. Ranking Logic
+        rank = 0
+        if p["category"] == u_status:
+            rank += 10  # Top priority for your current status
+        if p["type"] == "Scholarship" and u_status == "Student":
+            rank += 5   # Extra boost for scholarships if you're a student
         
-        matches.append({
-            "name": p["name"], 
-            "desc": p["desc"], 
-            "url": p["url"], 
-            "score": score
-        })
-    return sorted(matches, key=lambda x: x['score'], reverse=True)
-
-# --- MAIN DISPLAY ---
-if find_button:
-    st.subheader(f"Results for {age}yo {gender} {user_type}")
-    results = get_recommendations(age, gender, income, user_type)
+        results.append({**p, "rank": rank})
     
-    if not results:
-        st.warning("No specific matches found for your criteria. Try adjusting your income or status.")
-    else:
-        st.success(f"Found {len(results)} matching policies!")
-        for res in results:
+    # Sort by rank (Highest first)
+    return sorted(results, key=lambda x: x['rank'], reverse=True)
+
+if find_btn:
+    matches = get_matches(age, gender, income, user_status)
+    
+    if matches:
+        st.subheader(f"Top Recommendations for a {age}yo {gender} {user_status}")
+        for m in matches:
+            tag_class = "tag-student" if m["type"] == "Scholarship" else "tag-pension"
             st.markdown(f"""
                 <div class="policy-card">
-                    <h3>✅ {res['name']}</h3>
-                    <p>{res['desc']}</p>
-                    <a href="{res['url']}" target="_blank" class="apply-link">View Official Details & Apply ↗️</a>
+                    <span class="tag {tag_class}">{m['type']}</span>
+                    <h3>{m['name']}</h3>
+                    <p>{m['desc']}</p>
+                    <p><b>Income Limit:</b> Up to ₹{m['max_income']:,}</p>
+                    <a href="{m['url']}" target="_blank" class="apply-btn">Apply on Official Portal ↗️</a>
                 </div>
             """, unsafe_allow_html=True)
+    else:
+        st.warning("No perfect matches found. Try broadening your criteria.")
 else:
-    st.info("Please fill in your details on the left sidebar and click 'Find Best Policies'.")
-    st.image("https://www.myscheme.gov.in/_next/image?url=%2Fimages%2Fhome%2Fhero-banner.png&w=1920&q=75", caption="Empowering Citizens through Technology")
-
-st.divider()
-st.caption("Note: This AI agent uses a curated 2026 database. All links lead to official .gov.in or authorized portal sites.")
+    st.info("← Enter your details to see verified scholarships and schemes.")
